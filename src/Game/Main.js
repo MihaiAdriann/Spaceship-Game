@@ -3,11 +3,9 @@ import { Application, Assets, Sprite, Text, TextStyle } from 'pixi.js';
 let appInitialized = false;
 
 const Main = async () => {
-
-    if (appInitialized) return;
-    appInitialized = true;
+  if (appInitialized) return;
+  appInitialized = true;
   const app = new Application();
-
   await app.init({ resizeTo: window });
   document.body.appendChild(app.canvas);
 
@@ -18,6 +16,9 @@ const Main = async () => {
   app.stage.addChild(bg);
 
   const spaceshipTexture = await Assets.load('/Sprite/Spaceship.png');
+  const spaceshipMoveTexture = await Assets.load('/Sprite/Spaceship-Move.png');
+  const enemyLeftTexture = await Assets.load('/Sprite/enemy-left.png');
+  const enemyRightTexture = await Assets.load('/Sprite/enemy-right.png');
 
   await Assets.load([
     '/Sprite/Asteroid-1.png',
@@ -30,11 +31,12 @@ const Main = async () => {
   const spaceship = new Sprite(spaceshipTexture);
   spaceship.anchor.set(0.5);
   spaceship.x = app.screen.width / 2;
-  spaceship.y = app.screen.height / 2;
+  spaceship.y = app.screen.height / 1.2;
   app.stage.addChild(spaceship);
 
   const speed = 3.5;
   let score = 0;
+  let isMoving = false;
 
   const scoreStyle = new TextStyle({
     fontSize: 36,
@@ -52,83 +54,73 @@ const Main = async () => {
   let moveLeft = false;
   let moveRight = false;
 
+  const updateTexture = () => {
+    if (moveUp || moveDown || moveLeft || moveRight) {
+      if (!isMoving) {
+        spaceship.texture = spaceshipMoveTexture;
+        isMoving = true;
+      }
+    } else {
+      if (isMoving) {
+        spaceship.texture = spaceshipTexture;
+        isMoving = false;
+      }
+    }
+  };
+
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowUp' || e.key === 'w') {
-      moveUp = true;
-    }
-    if (e.key === 'ArrowDown' || e.key === 's') {
-      moveDown = true;
-    }
-    if (e.key === 'ArrowLeft' || e.key === 'a') {
-      moveLeft = true;
-    }
-    if (e.key === 'ArrowRight' || e.key === 'd') {
-      moveRight = true;
-    }
+    if (e.key === ' ' && missiles.length < 10) {launchMissile();}
+    if (e.key === 'ArrowUp' || e.key === 'w') moveUp = true;
+    if (e.key === 'ArrowDown' || e.key === 's') moveDown = true;
+    if (e.key === 'ArrowLeft' || e.key === 'a') moveLeft = true;
+    if (e.key === 'ArrowRight' || e.key === 'd') moveRight = true;
+    updateTexture();
   });
 
   window.addEventListener('keyup', (e) => {
-    if (e.key === 'ArrowUp' || e.key === 'w') {
-      moveUp = false;
-    }
-    if (e.key === 'ArrowDown' || e.key === 's') {
-      moveDown = false;
-    }
-    if (e.key === 'ArrowLeft' || e.key === 'a') {
-      moveLeft = false;
-    }
-    if (e.key === 'ArrowRight' || e.key === 'd') {
-      moveRight = false;
-    }
+    if (e.key === 'ArrowUp' || e.key === 'w') moveUp = false;
+    if (e.key === 'ArrowDown' || e.key === 's') moveDown = false;
+    if (e.key === 'ArrowLeft' || e.key === 'a') moveLeft = false;
+    if (e.key === 'ArrowRight' || e.key === 'd') moveRight = false;
+    updateTexture();
   });
 
-  const getRandomPosition = () => {
+  const getRandomPositionOutsideScreen = () => {
+    const side = Math.floor(Math.random() * 4);
     let x, y;
-    do {
-      x = Math.random() * app.screen.width;
-      y = Math.random() * app.screen.height;
-    } while (Math.sqrt(Math.pow(x - spaceship.x, 2) + Math.pow(y - spaceship.y, 2)) < 100);
-
+    switch (side) {
+      case 0: x = -50; y = Math.random() * app.screen.height; break;
+      case 1: x = app.screen.width + 50; y = Math.random() * app.screen.height; break;
+      case 2: x = Math.random() * app.screen.width; y = -50; break;
+      case 3: x = Math.random() * app.screen.width; y = app.screen.height + 50; break;
+      default: x = app.screen.width / 2; y = app.screen.height / 2;
+    }
     return { x, y };
   };
 
   const getRandomVelocity = () => {
-    const angle = Math.random() * 2 * Math.PI;
+    const angle = Math.random() * Math.PI * 2;
     const speed = Math.random() * 1 + 1;
     return { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed };
   };
 
-  const checkCollision = (asteroid) => {
-    const distance = Math.sqrt(
-      Math.pow(asteroid.x - spaceship.x, 2) + Math.pow(asteroid.y - spaceship.y, 2)
-    );
-    const collisionDistance = 40 + 30;
-
-    if (distance < collisionDistance) {
-      return true;
-    }
-    return false;
-  };
-
   const createAsteroid = async () => {
-    const position = getRandomPosition();
+    if (asteroidSprites.length >= 25) return;
+    const position = getRandomPositionOutsideScreen();
     const asteroidTexture = await Assets.load(`/Sprite/Asteroid-${Math.floor(Math.random() * 5) + 1}.png`);
     const asteroid = new Sprite(asteroidTexture);
-
     asteroid.x = position.x;
     asteroid.y = position.y;
     asteroid.velocity = getRandomVelocity();
-
     app.stage.addChild(asteroid);
-    return asteroid;
+    asteroidSprites.push(asteroid);
   };
 
   const asteroidSprites = [];
-  const asteroidCount = 5;
+  const initialAsteroidCount = 15;
 
-  for (let i = 0; i < asteroidCount; i++) {
-    const asteroid = await createAsteroid();
-    asteroidSprites.push(asteroid);
+  for (let i = 0; i < initialAsteroidCount; i++) {
+    await createAsteroid();
   }
 
   const missiles = [];
@@ -140,36 +132,83 @@ const Main = async () => {
     missile.x = spaceship.x;
     missile.y = spaceship.y - spaceship.height / 2;
     missile.velocity = { x: 0, y: -10 };
-
     missiles.push(missile);
     app.stage.addChild(missile);
   };
 
-  window.addEventListener('keydown', (e) => {
-    if (e.key === ' ') {
-      launchMissile();
-    }
-  });
+  
+
+  const createEnemy = () => {
+    const isLeft = Math.random() < 0.5;
+    const enemyTexture = isLeft ? enemyLeftTexture : enemyRightTexture;
+    const enemy = new Sprite(enemyTexture);
+    enemy.anchor.set(0.5);
+    enemy.y = Math.random() * (app.screen.height * 0.25);
+    enemy.x = isLeft ? -50 : app.screen.width + 50;
+    enemy.velocity = isLeft ? 2 : -2;
+    app.stage.addChild(enemy);
+    enemySprites.push(enemy);
+  };
+
+  const enemySprites = [];
+  const initialEnemyCount = 3;
+
+  for (let i = 0; i < initialEnemyCount; i++) {
+    createEnemy();
+  }
 
   const checkMissileCollision = (missile) => {
-    asteroidSprites.forEach((asteroid, index) => {
+    enemySprites.forEach((enemy, index) => {
       const distance = Math.sqrt(
-        Math.pow(missile.x - asteroid.x, 2) + Math.pow(missile.y - asteroid.y, 2)
+        Math.pow(missile.x - enemy.x, 2) + Math.pow(missile.y - enemy.y, 2)
       );
-      const collisionDistance = missile.width / 2 + asteroid.width / 2;
-
+      const collisionDistance = missile.width / 2 + enemy.width / 2;
       if (distance < collisionDistance) {
-        asteroidSprites.splice(index, 1);
-        app.stage.removeChild(asteroid);
-        missiles.splice(missiles.indexOf(missile), 1);
-        app.stage.removeChild(missile);
+        app.stage.removeChild(enemy);
+        enemySprites.splice(index, 1);
 
         score += 1;
         scoreText.text = `Score: ${score}`;
 
-        createAsteroid().then((newAsteroid) => {
-          asteroidSprites.push(newAsteroid);
-        });
+        createEnemy();
+
+        missile.y = -9999;
+      }
+    });
+
+    asteroidSprites.forEach((asteroid, index) => {
+      const distance = Math.sqrt(
+        Math.pow(missile.x - asteroid.x, 2) + Math.pow(missile.y - asteroid.y, 2)
+      );
+      const collisionDistance = missile.width / 2 + asteroid.width / 4; 
+      if (distance < collisionDistance) {
+        missile.y = -9999;  
+      }
+    });
+  };
+  
+
+  const checkAsteroidCollision = () => {
+    asteroidSprites.forEach((asteroid) => {
+      const distance = Math.sqrt(
+        Math.pow(spaceship.x - asteroid.x, 2) + Math.pow(spaceship.y - asteroid.y, 2)
+      );
+      const collisionDistance = spaceship.width / 2 + asteroid.width / 4;
+      if (distance < collisionDistance) {
+        app.stage.removeChild(spaceship);
+
+      }
+    });
+  };
+
+  const checkEnemyCollision = () => {
+    enemySprites.forEach((enemy) => {
+      const distance = Math.sqrt(
+        Math.pow(spaceship.x - enemy.x, 2) + Math.pow(spaceship.y - enemy.y, 2)
+      );
+      const collisionDistance = spaceship.width / 2 + enemy.width / 2;
+      if (distance < collisionDistance) {
+        app.stage.removeChild(spaceship);
       }
     });
   };
@@ -183,30 +222,36 @@ const Main = async () => {
     spaceship.x = Math.max(0, Math.min(spaceship.x, app.screen.width));
     spaceship.y = Math.max(0, Math.min(spaceship.y, app.screen.height));
 
-    asteroidSprites.forEach((asteroid) => {
+    asteroidSprites.forEach((asteroid, index) => {
       asteroid.x += asteroid.velocity.x;
       asteroid.y += asteroid.velocity.y;
-
-      if (asteroid.x < 0) asteroid.x = app.screen.width;
-      if (asteroid.x > app.screen.width) asteroid.x = 0;
-      if (asteroid.y < 0) asteroid.y = app.screen.height;
-      if (asteroid.y > app.screen.height) asteroid.y = 0;
-
-      if (checkCollision(asteroid)) {
-        spaceship.x = app.screen.width / 2;
-        spaceship.y = app.screen.height / 2;
+      if (
+        asteroid.x < -50 || asteroid.x > app.screen.width + 50 ||
+        asteroid.y < -50 || asteroid.y > app.screen.height + 50
+      ) {
+        app.stage.removeChild(asteroid);
+        asteroidSprites.splice(index, 1);
+        createAsteroid();
       }
     });
 
     missiles.forEach((missile) => {
       missile.y += missile.velocity.y;
-
       if (missile.y < 0) {
         missiles.splice(missiles.indexOf(missile), 1);
         app.stage.removeChild(missile);
       }
-
       checkMissileCollision(missile);
+    });
+    //checkAsteroidCollision()
+    //checkEnemyCollision()
+    enemySprites.forEach((enemy) => {
+      enemy.x += enemy.velocity;
+      if (enemy.x < -50 || enemy.x > app.screen.width + 50) {
+        app.stage.removeChild(enemy);
+        enemySprites.splice(enemySprites.indexOf(enemy), 1);
+        createEnemy();
+      }
     });
   });
 
