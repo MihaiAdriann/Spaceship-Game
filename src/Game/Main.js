@@ -260,11 +260,9 @@ const Main = async () => {
       createEnemy();
     }
   
-    // Resetăm proiectilele
     missiles.forEach((missile) => app.stage.removeChild(missile));
-    missiles.length = 0; // Curățăm array-ul de proiectile
-  
-    gameResetting = false; // Setăm flag-ul înapoi la false după resetare
+    missiles.length = 0; 
+    gameResetting = false; 
   };
   
   const checkAsteroidCollision = () => {
@@ -274,7 +272,7 @@ const Main = async () => {
       );
       const collisionDistance = spaceship.width / 7 + asteroid.width / 7;
       if (distance < collisionDistance) {
-        resetGame(); // Apelăm funcția de resetare a jocului când coliziunea se produce
+        resetGame(); 
       }
     });
   };
@@ -286,7 +284,7 @@ const Main = async () => {
       );
       const collisionDistance = spaceship.width / 7 + enemy.width / 7;
       if (distance < collisionDistance) {
-        resetGame(); // Apelăm funcția de resetare a jocului când coliziunea se produce
+        resetGame(); 
       }
     });
   };
