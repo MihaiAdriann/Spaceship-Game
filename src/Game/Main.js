@@ -199,6 +199,8 @@ const Main = async () => {
     missiles.length = 0;
     gameOverButton.visible = true;
     gameOverText.visible = true;
+    scoreText.text = `Score: ${score}`;
+    app.stage.addChild(scoreText);
   };
 
   playButton.interactive = true;
