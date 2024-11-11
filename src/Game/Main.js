@@ -15,6 +15,8 @@ const Main = async () => {
   bg.height = app.screen.height;
   app.stage.addChild(bg);
 
+    
+
   const spaceshipTexture = await Assets.load('/Sprite/spaceship.png');
   const spaceshipUpTexture = await Assets.load('/Sprite/spaceship-up.png');
   const spaceshipBackTexture = await Assets.load('/Sprite/spaceship-back.png');
@@ -161,10 +163,10 @@ const Main = async () => {
 
   const launchMissile = () => {
     const missile = new Sprite(missileTexture);
-    missile.anchor.set(0.5);
+    missile.anchor.set(0.6);
     missile.x = spaceship.x;
-    missile.y = spaceship.y - spaceship.height / 2;
-    missile.velocity = { x: 0, y: -10 };
+    missile.y = spaceship.y - spaceship.height / 7;
+    missile.velocity = { x: 0, y: -3 };
     missiles.push(missile);
     app.stage.addChild(missile);
   };
@@ -195,56 +197,101 @@ const Main = async () => {
       const distance = Math.sqrt(
         Math.pow(missile.x - enemy.x, 2) + Math.pow(missile.y - enemy.y, 2)
       );
-      const collisionDistance = missile.width / 2 + enemy.width / 2;
+      const radiusMissile = missile.texture.width / 7;
+      const radiusEnemy = enemy.texture.width / 6;
+      const collisionDistance = radiusMissile + radiusEnemy;
       if (distance < collisionDistance) {
         app.stage.removeChild(enemy);
         enemySprites.splice(index, 1);
-
+  
         score += 1;
         scoreText.text = `Score: ${score}`;
-
+  
         createEnemy();
-
+  
         missile.y = -9999;
       }
     });
-
+  
     asteroidSprites.forEach((asteroid, index) => {
       const distance = Math.sqrt(
         Math.pow(missile.x - asteroid.x, 2) + Math.pow(missile.y - asteroid.y, 2)
       );
-      const collisionDistance = missile.width / 2 + asteroid.width / 4; 
+      const radiusMissile = missile.texture.width / 5;
+      const radiusAsteroid = asteroid.texture.width / 5;
+      const collisionDistance = radiusMissile + radiusAsteroid;
       if (distance < collisionDistance) {
-        missile.y = -9999;  
+        missile.y = -9999;
       }
     });
   };
   
 
+
+  let gameResetting = false;
+
+  const resetGame = () => {
+    if (gameResetting) return; // Evităm resetarea continuă
+    gameResetting = true; // Activăm flag-ul pentru a evita resetările multiple
+  
+    // Resetăm scorul
+    score = 0;
+    scoreText.text = `Score: ${score}`;
+  
+    // Resetăm poziția navei
+    spaceship.x = app.screen.width / 2;
+    spaceship.y = app.screen.height / 1.2;
+  
+    // Resetăm mișcarea navei
+    moveUp = moveDown = moveLeft = moveRight = false;
+    spaceship.texture = spaceshipTexture; // Resetăm textura la textura inițială
+  
+    // Resetăm sprite-urile de asteroizi și inamici
+    asteroidSprites.forEach((asteroid) => app.stage.removeChild(asteroid));
+    enemySprites.forEach((enemy) => app.stage.removeChild(enemy));
+    asteroidSprites.length = 0; // Curățăm array-ul de asteroizi
+    enemySprites.length = 0; // Curățăm array-ul de inamici
+  
+    // Creăm din nou asteroizi și inamici
+    for (let i = 0; i < initialAsteroidCount; i++) {
+      createAsteroid();
+    }
+    for (let i = 0; i < initialEnemyCount; i++) {
+      createEnemy();
+    }
+  
+    // Resetăm proiectilele
+    missiles.forEach((missile) => app.stage.removeChild(missile));
+    missiles.length = 0; // Curățăm array-ul de proiectile
+  
+    gameResetting = false; // Setăm flag-ul înapoi la false după resetare
+  };
+  
   const checkAsteroidCollision = () => {
     asteroidSprites.forEach((asteroid) => {
       const distance = Math.sqrt(
         Math.pow(spaceship.x - asteroid.x, 2) + Math.pow(spaceship.y - asteroid.y, 2)
       );
-      const collisionDistance = spaceship.width / 2 + asteroid.width / 4;
+      const collisionDistance = spaceship.width / 7 + asteroid.width / 7;
       if (distance < collisionDistance) {
-        app.stage.removeChild(spaceship);
-
+        resetGame(); // Apelăm funcția de resetare a jocului când coliziunea se produce
       }
     });
   };
-
+  
   const checkEnemyCollision = () => {
     enemySprites.forEach((enemy) => {
       const distance = Math.sqrt(
         Math.pow(spaceship.x - enemy.x, 2) + Math.pow(spaceship.y - enemy.y, 2)
       );
-      const collisionDistance = spaceship.width / 2 + enemy.width / 2;
+      const collisionDistance = spaceship.width / 7 + enemy.width / 7;
       if (distance < collisionDistance) {
-        app.stage.removeChild(spaceship);
+        resetGame(); // Apelăm funcția de resetare a jocului când coliziunea se produce
       }
     });
   };
+  
+
 
   app.ticker.add(() => {
     if (moveUp) spaceship.y -= speed;
@@ -276,8 +323,8 @@ const Main = async () => {
       }
       checkMissileCollision(missile);
     });
-    //checkAsteroidCollision()
-    //checkEnemyCollision()
+    checkAsteroidCollision()
+    checkEnemyCollision()
     enemySprites.forEach((enemy) => {
       enemy.x += enemy.velocity;
       if (enemy.x < -50 || enemy.x > app.screen.width + 50) {
