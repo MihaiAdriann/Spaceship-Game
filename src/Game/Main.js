@@ -1,4 +1,4 @@
-import { Application, Assets, Sprite, Text, TextStyle } from 'pixi.js';
+import { Application, Assets, Sprite, Text, TextStyle, Graphics } from 'pixi.js';
 
 let appInitialized = false;
 
@@ -15,7 +15,31 @@ const Main = async () => {
   bg.height = app.screen.height;
   app.stage.addChild(bg);
 
-    
+  const playButton = new Graphics();
+  playButton.beginFill(0x0000ff);
+  playButton.drawRect(app.screen.width / 2 - 50, app.screen.height / 2 - 25, 100, 50);
+  playButton.endFill();
+  app.stage.addChild(playButton);
+
+  const buttonText = new Text('Play', { fontSize: 24, fill: '#ffffff' });
+  buttonText.anchor.set(0.5);
+  buttonText.x = app.screen.width / 2;
+  buttonText.y = app.screen.height / 2;
+  app.stage.addChild(buttonText);
+
+  const gameOverButton = new Graphics();
+  gameOverButton.beginFill(0xff0000);
+  gameOverButton.drawRect(app.screen.width / 2 - 50, app.screen.height / 2 - 25, 100, 50);
+  gameOverButton.endFill();
+  gameOverButton.visible = false;
+  app.stage.addChild(gameOverButton);
+
+  const gameOverText = new Text('Game Over\nTry Again', { fontSize: 18, fill: '#ffffff', align: 'center' });
+  gameOverText.anchor.set(0.5);
+  gameOverText.x = app.screen.width / 2;
+  gameOverText.y = app.screen.height / 2;
+  gameOverText.visible = false;
+  app.stage.addChild(gameOverText);
 
   const spaceshipTexture = await Assets.load('/Sprite/spaceship.png');
   const spaceshipUpTexture = await Assets.load('/Sprite/spaceship-up.png');
@@ -40,23 +64,28 @@ const Main = async () => {
   spaceship.anchor.set(0.5);
   spaceship.x = app.screen.width / 2;
   spaceship.y = app.screen.height / 1.2;
-  spaceship.scale.set(0.3)
+  spaceship.scale.set(0.3);
   app.stage.addChild(spaceship);
 
   const speed = 3.5;
+  let gameStarted = false;
   let score = 0;
   let isMoving = false;
+
+  const asteroidSprites = [];
+  const enemySprites = [];
+  const missiles = [];
+  const initialAsteroidCount = 15;
+  const initialEnemyCount = 3;
 
   const scoreStyle = new TextStyle({
     fontSize: 36,
     fill: '#ffffff',
     fontWeight: 'bold',
   });
-
   const scoreText = new Text('Score: 0', scoreStyle);
   scoreText.x = 20;
   scoreText.y = 20;
-  app.stage.addChild(scoreText);
 
   let moveUp = false;
   let moveDown = false;
@@ -101,10 +130,10 @@ const Main = async () => {
       }
     }
   };
-  
 
   window.addEventListener('keydown', (e) => {
-    if (e.key === ' ' && missiles.length < 10) {launchMissile();}
+    if (!gameStarted) return;
+    if (e.key === ' ' && missiles.length < 10) launchMissile();
     if (e.key === 'ArrowUp' || e.key === 'w') moveUp = true;
     if (e.key === 'ArrowDown' || e.key === 's') moveDown = true;
     if (e.key === 'ArrowLeft' || e.key === 'a') moveLeft = true;
@@ -113,12 +142,73 @@ const Main = async () => {
   });
 
   window.addEventListener('keyup', (e) => {
+    if (!gameStarted) return;
     if (e.key === 'ArrowUp' || e.key === 'w') moveUp = false;
     if (e.key === 'ArrowDown' || e.key === 's') moveDown = false;
     if (e.key === 'ArrowLeft' || e.key === 'a') moveLeft = false;
     if (e.key === 'ArrowRight' || e.key === 'd') moveRight = false;
     updateTexture();
   });
+
+  const startGame = () => {
+    app.stage.removeChild(playButton);
+    app.stage.removeChild(buttonText);
+    app.stage.addChild(scoreText);
+    app.stage.addChild(spaceship);
+    for (let i = 0; i < initialAsteroidCount; i++) createAsteroid();
+    for (let i = 0; i < initialEnemyCount; i++) createEnemy();
+    gameStarted = true;
+  };
+
+  const resetGame = () => {
+    gameOverButton.visible = false;
+    gameOverText.visible = false;
+    score = 0;
+    scoreText.text = `Score: ${score}`;
+  
+    spaceship.x = app.screen.width / 2;
+    spaceship.y = app.screen.height / 1.2;
+    spaceship.texture = spaceshipTexture;
+    moveUp = false;
+    moveDown = false;
+    moveLeft = false;
+    moveRight = false;
+  
+    asteroidSprites.forEach((asteroid) => app.stage.removeChild(asteroid));
+    enemySprites.forEach((enemy) => app.stage.removeChild(enemy));
+    missiles.forEach((missile) => app.stage.removeChild(missile));
+  
+    asteroidSprites.length = 0;
+    enemySprites.length = 0;
+    missiles.length = 0;
+  
+    app.stage.addChild(scoreText);
+    for (let i = 0; i < initialAsteroidCount; i++) createAsteroid();
+    for (let i = 0; i < initialEnemyCount; i++) createEnemy();
+  
+    gameStarted = true;
+  };
+  const endGame = () => {
+    gameStarted = false;
+    app.stage.removeChild(scoreText);
+    asteroidSprites.forEach((asteroid) => app.stage.removeChild(asteroid));
+    enemySprites.forEach((enemy) => app.stage.removeChild(enemy));
+    missiles.forEach((missile) => app.stage.removeChild(missile));
+    asteroidSprites.length = 0;
+    enemySprites.length = 0;
+    missiles.length = 0;
+    gameOverButton.visible = true;
+    gameOverText.visible = true;
+  };
+
+  playButton.interactive = true;
+  playButton.buttonMode = true;
+  playButton.on('pointerdown', startGame);
+
+  gameOverButton.interactive = true;
+  gameOverButton.buttonMode = true;
+  gameOverButton.on('pointerdown', resetGame);
+
 
   const getRandomPositionOutsideScreen = () => {
     const side = Math.floor(Math.random() * 4);
@@ -139,7 +229,7 @@ const Main = async () => {
     return { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed };
   };
 
-  const createAsteroid = async () => {
+ const createAsteroid = async () => {
     if (asteroidSprites.length >= 25) return;
     const position = getRandomPositionOutsideScreen();
     const asteroidTexture = await Assets.load(`/Sprite/Asteroid-${Math.floor(Math.random() * 5) + 1}.png`);
@@ -151,29 +241,7 @@ const Main = async () => {
     asteroidSprites.push(asteroid);
   };
 
-  const asteroidSprites = [];
-  const initialAsteroidCount = 15;
-
-  for (let i = 0; i < initialAsteroidCount; i++) {
-    await createAsteroid();
-  }
-
-  const missiles = [];
-  const missileTexture = await Assets.load('/Sprite/Missiles1.png');
-
-  const launchMissile = () => {
-    const missile = new Sprite(missileTexture);
-    missile.anchor.set(0.6);
-    missile.x = spaceship.x;
-    missile.y = spaceship.y - spaceship.height / 7;
-    missile.velocity = { x: 0, y: -3 };
-    missiles.push(missile);
-    app.stage.addChild(missile);
-  };
-
-  
-
-  const createEnemy = () => {
+    const createEnemy = () => {
     const isLeft = Math.random() < 0.5;
     const enemyTexture = isLeft ? enemyLeftTexture : enemyRightTexture;
     const enemy = new Sprite(enemyTexture);
@@ -185,12 +253,23 @@ const Main = async () => {
     enemySprites.push(enemy);
   };
 
-  const enemySprites = [];
-  const initialEnemyCount = 3;
-
   for (let i = 0; i < initialEnemyCount; i++) {
     createEnemy();
   }
+
+
+ const missileTexture = await Assets.load('/Sprite/Missiles1.png');
+
+  const launchMissile = () => {
+    const missile = new Sprite(missileTexture);
+    missile.anchor.set(0.6);
+    missile.x = spaceship.x;
+    missile.y = spaceship.y - spaceship.height / 7;
+    missile.velocity = { x: 0, y: -3 };
+    missiles.push(missile);
+    app.stage.addChild(missile);
+  };
+
 
   const checkMissileCollision = (missile) => {
     enemySprites.forEach((enemy, index) => {
@@ -225,46 +304,7 @@ const Main = async () => {
       }
     });
   };
-  
 
-
-  let gameResetting = false;
-
-  const resetGame = () => {
-    if (gameResetting) return; // Evităm resetarea continuă
-    gameResetting = true; // Activăm flag-ul pentru a evita resetările multiple
-  
-    // Resetăm scorul
-    score = 0;
-    scoreText.text = `Score: ${score}`;
-  
-    // Resetăm poziția navei
-    spaceship.x = app.screen.width / 2;
-    spaceship.y = app.screen.height / 1.2;
-  
-    // Resetăm mișcarea navei
-    moveUp = moveDown = moveLeft = moveRight = false;
-    spaceship.texture = spaceshipTexture; // Resetăm textura la textura inițială
-  
-    // Resetăm sprite-urile de asteroizi și inamici
-    asteroidSprites.forEach((asteroid) => app.stage.removeChild(asteroid));
-    enemySprites.forEach((enemy) => app.stage.removeChild(enemy));
-    asteroidSprites.length = 0; // Curățăm array-ul de asteroizi
-    enemySprites.length = 0; // Curățăm array-ul de inamici
-  
-    // Creăm din nou asteroizi și inamici
-    for (let i = 0; i < initialAsteroidCount; i++) {
-      createAsteroid();
-    }
-    for (let i = 0; i < initialEnemyCount; i++) {
-      createEnemy();
-    }
-  
-    missiles.forEach((missile) => app.stage.removeChild(missile));
-    missiles.length = 0; 
-    gameResetting = false; 
-  };
-  
   const checkAsteroidCollision = () => {
     asteroidSprites.forEach((asteroid) => {
       const distance = Math.sqrt(
@@ -272,11 +312,11 @@ const Main = async () => {
       );
       const collisionDistance = spaceship.width / 7 + asteroid.width / 7;
       if (distance < collisionDistance) {
-        resetGame(); 
+        endGame(); 
       }
     });
   };
-  
+
   const checkEnemyCollision = () => {
     enemySprites.forEach((enemy) => {
       const distance = Math.sqrt(
@@ -284,14 +324,13 @@ const Main = async () => {
       );
       const collisionDistance = spaceship.width / 7 + enemy.width / 7;
       if (distance < collisionDistance) {
-        resetGame(); 
+        endGame(); 
       }
     });
   };
-  
-
 
   app.ticker.add(() => {
+    if (!gameStarted) return;
     if (moveUp) spaceship.y -= speed;
     if (moveDown) spaceship.y += speed;
     if (moveLeft) spaceship.x -= speed;
@@ -332,8 +371,6 @@ const Main = async () => {
       }
     });
   });
-
-  return app;
 };
 
 export default Main;
