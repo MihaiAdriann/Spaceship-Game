@@ -15,8 +15,14 @@ const Main = async () => {
   bg.height = app.screen.height;
   app.stage.addChild(bg);
 
-  const spaceshipTexture = await Assets.load('/Sprite/Spaceship.png');
-  const spaceshipMoveTexture = await Assets.load('/Sprite/Spaceship-Move.png');
+  const spaceshipTexture = await Assets.load('/Sprite/spaceship.png');
+  const spaceshipUpTexture = await Assets.load('/Sprite/spaceship-up.png');
+  const spaceshipBackTexture = await Assets.load('/Sprite/spaceship-back.png');
+  const spaceshipLeftTexture = await Assets.load('/Sprite/spaceship-left.png');
+  const spaceshipRightTexture = await Assets.load('/Sprite/spaceship-right.png');
+  const spaceshipRightUpTexture = await Assets.load('/Sprite/spaceship-right-up.png');
+  const spaceshipLeftUpTexture = await Assets.load('/Sprite/spaceship-left-up.png');
+
   const enemyLeftTexture = await Assets.load('/Sprite/enemy-left.png');
   const enemyRightTexture = await Assets.load('/Sprite/enemy-right.png');
 
@@ -32,6 +38,7 @@ const Main = async () => {
   spaceship.anchor.set(0.5);
   spaceship.x = app.screen.width / 2;
   spaceship.y = app.screen.height / 1.2;
+  spaceship.scale.set(0.3)
   app.stage.addChild(spaceship);
 
   const speed = 3.5;
@@ -55,18 +62,44 @@ const Main = async () => {
   let moveRight = false;
 
   const updateTexture = () => {
-    if (moveUp || moveDown || moveLeft || moveRight) {
-      if (!isMoving) {
-        spaceship.texture = spaceshipMoveTexture;
+    if (moveUp && moveRight) {
+      if (!isMoving || spaceship.texture !== spaceshipRightUpTexture) {
+        spaceship.texture = spaceshipRightUpTexture;
+        isMoving = true;
+      }
+    } else if (moveUp && moveLeft) {
+      if (!isMoving || spaceship.texture !== spaceshipLeftUpTexture) {
+        spaceship.texture = spaceshipLeftUpTexture;
+        isMoving = true;
+      }
+    } else if (moveUp) {
+      if (!isMoving || spaceship.texture !== spaceshipUpTexture) {
+        spaceship.texture = spaceshipUpTexture;
+        isMoving = true;
+      }
+    } else if (moveDown) {
+      if (!isMoving || spaceship.texture !== spaceshipBackTexture) {
+        spaceship.texture = spaceshipBackTexture;
+        isMoving = true;
+      }
+    } else if (moveLeft) {
+      if (!isMoving || spaceship.texture !== spaceshipLeftTexture) {
+        spaceship.texture = spaceshipLeftTexture;
+        isMoving = true;
+      }
+    } else if (moveRight) {
+      if (!isMoving || spaceship.texture !== spaceshipRightTexture) {
+        spaceship.texture = spaceshipRightTexture;
         isMoving = true;
       }
     } else {
       if (isMoving) {
-        spaceship.texture = spaceshipTexture;
+        spaceship.texture = spaceshipTexture; 
         isMoving = false;
       }
     }
   };
+  
 
   window.addEventListener('keydown', (e) => {
     if (e.key === ' ' && missiles.length < 10) {launchMissile();}
