@@ -342,6 +342,7 @@ const endGameWithExplosion = (collisionX, collisionY) => {
       const collisionDistance = radiusMissile + radiusEnemy;
       if (distance < collisionDistance) {
         app.stage.removeChild(enemy);
+        createExplosion(missile.x, missile.y,)
         enemySprites.splice(index, 1);
 
         score += 1;
