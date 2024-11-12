@@ -60,6 +60,26 @@ const Main = async () => {
     '/Sprite/Asteroid-5.png',
   ]);
 
+  const explosionTextures = await Promise.all([
+    '/Sprite/boom-1.png',
+    '/Sprite/boom-2.png',
+    '/Sprite/boom-3.png',
+    '/Sprite/boom-4.png',
+    '/Sprite/boom-5.png',
+    '/Sprite/boom-6.png',
+    '/Sprite/boom-7.png',
+    '/Sprite/boom-8.png',
+    '/Sprite/boom-9.png',
+    '/Sprite/boom-10.png',
+    '/Sprite/boom-11.png',
+    '/Sprite/boom-12.png',
+    '/Sprite/boom-13.png',
+    '/Sprite/boom-14.png',
+    '/Sprite/boom-15.png',
+    '/Sprite/boom-16.png',
+    '/Sprite/boom-17.png',
+  ].map(path => Assets.load(path)));
+
   const spaceship = new Sprite(spaceshipTexture);
   spaceship.anchor.set(0.5);
   spaceship.x = app.screen.width / 2;
@@ -125,7 +145,7 @@ const Main = async () => {
       }
     } else {
       if (isMoving) {
-        spaceship.texture = spaceshipTexture; 
+        spaceship.texture = spaceshipTexture;
         isMoving = false;
       }
     }
@@ -150,6 +170,43 @@ const Main = async () => {
     updateTexture();
   });
 
+
+
+  const createExplosion = (x, y, onComplete) => {
+    const explosion = new Sprite(explosionTextures[0]);
+    explosion.anchor.set(0.5);
+    explosion.x = x;
+    explosion.y = y;
+    explosion.scale.set(2.5); 
+    app.stage.addChild(explosion);
+
+    let currentFrame = 0;
+    const frameDelay = 1; 
+
+    const explosionTicker = () => {
+        if (app.ticker.lastTime % frameDelay === 0) {
+            if (currentFrame < explosionTextures.length) {
+                explosion.texture = explosionTextures[currentFrame++];
+            } else {
+                app.ticker.remove(explosionTicker);
+                app.stage.removeChild(explosion);
+                onComplete && onComplete();
+            }
+        }
+    };
+    
+    app.ticker.add(explosionTicker);
+};
+
+const endGameWithExplosion = (collisionX, collisionY) => {
+    gameStarted = false;
+    createExplosion(collisionX, collisionY, () => {
+        gameOverButton.visible = true;
+        gameOverText.visible = true;
+    });
+};
+
+
   const startGame = () => {
     app.stage.removeChild(playButton);
     app.stage.removeChild(buttonText);
@@ -165,7 +222,7 @@ const Main = async () => {
     gameOverText.visible = false;
     score = 0;
     scoreText.text = `Score: ${score}`;
-  
+    app.stage.addChild(spaceship);
     spaceship.x = app.screen.width / 2;
     spaceship.y = app.screen.height / 1.2;
     spaceship.texture = spaceshipTexture;
@@ -173,22 +230,24 @@ const Main = async () => {
     moveDown = false;
     moveLeft = false;
     moveRight = false;
-  
+
     asteroidSprites.forEach((asteroid) => app.stage.removeChild(asteroid));
     enemySprites.forEach((enemy) => app.stage.removeChild(enemy));
     missiles.forEach((missile) => app.stage.removeChild(missile));
-  
+
     asteroidSprites.length = 0;
     enemySprites.length = 0;
     missiles.length = 0;
-  
+
     app.stage.addChild(scoreText);
     for (let i = 0; i < initialAsteroidCount; i++) createAsteroid();
     for (let i = 0; i < initialEnemyCount; i++) createEnemy();
-  
+
     gameStarted = true;
   };
-  const endGame = () => {
+
+
+ /* const endGame = () => {
     gameStarted = false;
     app.stage.removeChild(scoreText);
     asteroidSprites.forEach((asteroid) => app.stage.removeChild(asteroid));
@@ -201,7 +260,7 @@ const Main = async () => {
     gameOverText.visible = true;
     scoreText.text = `Score: ${score}`;
     app.stage.addChild(scoreText);
-  };
+  };*/
 
   playButton.interactive = true;
   playButton.buttonMode = true;
@@ -231,7 +290,7 @@ const Main = async () => {
     return { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed };
   };
 
- const createAsteroid = async () => {
+  const createAsteroid = async () => {
     if (asteroidSprites.length >= 25) return;
     const position = getRandomPositionOutsideScreen();
     const asteroidTexture = await Assets.load(`/Sprite/Asteroid-${Math.floor(Math.random() * 5) + 1}.png`);
@@ -243,7 +302,7 @@ const Main = async () => {
     asteroidSprites.push(asteroid);
   };
 
-    const createEnemy = () => {
+  const createEnemy = () => {
     const isLeft = Math.random() < 0.5;
     const enemyTexture = isLeft ? enemyLeftTexture : enemyRightTexture;
     const enemy = new Sprite(enemyTexture);
@@ -260,7 +319,7 @@ const Main = async () => {
   }
 
 
- const missileTexture = await Assets.load('/Sprite/Missiles1.png');
+  const missileTexture = await Assets.load('/Sprite/Missiles1.png');
 
   const launchMissile = () => {
     const missile = new Sprite(missileTexture);
@@ -284,16 +343,16 @@ const Main = async () => {
       if (distance < collisionDistance) {
         app.stage.removeChild(enemy);
         enemySprites.splice(index, 1);
-  
+
         score += 1;
         scoreText.text = `Score: ${score}`;
-  
+
         createEnemy();
-  
+
         missile.y = -9999;
       }
     });
-  
+
     asteroidSprites.forEach((asteroid, index) => {
       const distance = Math.sqrt(
         Math.pow(missile.x - asteroid.x, 2) + Math.pow(missile.y - asteroid.y, 2)
@@ -314,7 +373,8 @@ const Main = async () => {
       );
       const collisionDistance = spaceship.width / 7 + asteroid.width / 7;
       if (distance < collisionDistance) {
-        endGame(); 
+        app.stage.removeChild(spaceship)
+        endGameWithExplosion(spaceship.x, spaceship.y);
       }
     });
   };
@@ -326,7 +386,8 @@ const Main = async () => {
       );
       const collisionDistance = spaceship.width / 7 + enemy.width / 7;
       if (distance < collisionDistance) {
-        endGame(); 
+        app.stage.removeChild(spaceship)
+        endGameWithExplosion(spaceship.x, spaceship.y);
       }
     });
   };
